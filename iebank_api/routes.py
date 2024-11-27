@@ -1,9 +1,10 @@
 from flask import Flask, request
 from iebank_api import db, app
-from iebank_api.models import Account
-from iebank_api.models import User
+from iebank_api.models import Account, User, Transaction
 
 from iebank_api import default_username, default_password
+
+from sqlalchemy import or_
 
 @app.route('/')
 def hello_world():
@@ -157,3 +158,63 @@ def verify_user(username, password):
 def get_user_accounts(id):
     accounts = Account.query.filter_by(user_id=id).all()
     return {'accounts': [format_account(account) for account in accounts]}
+
+
+# request = ['user_from', 'account_from', 'account_to', 'amount']
+@app.route('/transactions', methods=['POST'])
+def make_transaction():
+    print(request.json)
+    
+    user_from = request.json['user_from']
+
+    account_from = request.json['account_from']
+    account_to = request.json['account_to']
+
+    amount = int(request.json['amount'])
+    print("TRANSACTION AMOUNT", amount)
+    
+    db_account_from = Account.query.filter_by(account_number=account_from).first()
+    db_account_to = Account.query.filter_by(account_number=account_to).first()
+
+    if not db_account_from or not db_account_to:
+        return {"valid" : False, "message" : "Invalid account."}
+
+    if str(db_account_from.user_id) != str(user_from):
+        return {"valid" : False, "message" : "Can only make transactions from your accounts."}
+
+    if amount > db_account_from.balance:
+        return {"valid" : False, "message" : "Insufficient balance."}
+    
+    user_to = db_account_to.user_id
+
+    db_account_from.balance -= amount
+    db_account_to.balance += amount
+    print("NEW BALANCE", db_account_from.balance)
+
+    transaction = Transaction(user_from, user_to, account_from, account_to, amount)
+    db.session.add(transaction)
+    db.session.commit()
+    return {"valid" : True, "message" : "Transaction successful!"}
+
+
+@app.route('/transactions', methods=['GET'])
+def get_transactions():
+    transactions = Transaction.query.all()
+    return {'transactions': [format_transaction(transaction) for transaction in transactions]}
+
+
+@app.route('/transactions/<int:id>', methods=['GET'])
+def get_user_transactions(id):
+    transactions = Transaction.query.filter(or_(Transaction.user_from==id, Transaction.user_to==id)).all()
+    return {'transactions': [format_transaction(transaction) for transaction in transactions]}
+
+
+def format_transaction(transaction):
+    return {
+        'id': transaction.id,
+        'account_from': transaction.account_from,
+        'account_to' : transaction.account_to,
+        'user_from': transaction.user_from,
+        'user_to' : transaction.user_to,
+        'amount' : transaction.amount,
+    }

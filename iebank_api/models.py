@@ -20,7 +20,7 @@ class Account(db.Model):
         self.user_id = user_id
         self.account_number = ''.join(random.choices(string.digits, k=20))
         self.currency = currency
-        self.balance = 0.0
+        self.balance = 100
         self.status = "Active"
 
 
@@ -36,3 +36,22 @@ class User(db.Model):
     def __init__(self, username, password):
         self.username = username
         self.password = password
+
+
+class Transaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_from = db.Column(db.Integer, nullable=False)
+    user_to = db.Column(db.Integer, nullable=False)
+    account_from = db.Column(db.Integer, nullable=False)
+    account_to = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+
+    def __repr__(self):
+        return '<Event %r>' % self.id
+
+    def __init__(self, user_from, user_to, account_from, account_to, amount):
+        self.user_from = user_from
+        self.user_to = user_to
+        self.account_from = account_from
+        self.account_to = account_to
+        self.amount = amount
