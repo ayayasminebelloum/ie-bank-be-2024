@@ -24,12 +24,12 @@ elif os.getenv('ENV') == 'ghci':
 db = SQLAlchemy(app)
 
 default_username="admin"
-default_password="password"
+default_password=os.getenv('ADMINPASS')
 
 from iebank_api.models import Account
 
 with app.app_context():
     db.create_all()
-CORS(app)
+CORS(app, supports_credentials=True, expose_headers=["pass", "user", "apass", "auser"])
 
 from iebank_api import routes
